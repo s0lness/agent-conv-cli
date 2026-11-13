@@ -92,19 +92,15 @@ class ConnectorStore:
                 raise HubError(413, f"catalog of {cli} is too large")
             rows.append((cli, node, text, self.clock()))
         with private_database(self.path) as db:
-            taken = {cli for (cli,) in db.execute("SELECT cli FROM catalogs WHERE node != ?", (node,))
-                     if self.clock() - self._updated(db, cli) < LIVE_SECONDS}
+            taken = {cli for cli, updated in db.execute(
+                "SELECT cli, updated FROM catalogs WHERE node != ?", (node,)
+            ) if self.clock() - updated < LIVE_SECONDS}
             clash = taken & {row[0] for row in rows}
             if clash:
                 raise HubError(409, f"another node serves {', '.join(sorted(clash))}")
             db.execute("DELETE FROM catalogs WHERE node = ?", (node,))
             db.executemany("INSERT OR REPLACE INTO catalogs VALUES (?, ?, ?, ?)", rows)
         return {"published": sorted(row[0] for row in rows)}
-
-    @staticmethod
-    def _updated(db, cli: str) -> float:
-        row = db.execute("SELECT updated FROM catalogs WHERE cli = ?", (cli,)).fetchone()
-        return row[0] if row else 0.0
 
     def catalog(self, cli: str) -> tuple[str, dict, float] | None:
         """(node, catalog, last publish time) of CLI, or None when no node published it."""

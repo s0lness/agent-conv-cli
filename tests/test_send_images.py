@@ -54,6 +54,11 @@ def test_load_refuses_a_missing_file(tmp_path):
         images.load([tmp_path / "gone.png"])
 
 
+def test_load_refuses_a_directory(tmp_path):
+    with pytest.raises(images.ImageError, match="no image"):
+        images.load([tmp_path])
+
+
 def test_load_refuses_a_disguised_file(tmp_path):
     fake = tmp_path / "fake.png"
     fake.write_text("not an image")

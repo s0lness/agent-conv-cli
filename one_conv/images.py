@@ -47,12 +47,12 @@ def load(paths) -> tuple[Image, ...]:
     for raw in paths:
         path = Path(raw).expanduser().resolve()
         try:
-            size = path.stat().st_size
+            with path.open("rb") as handle:
+                data = handle.read(MAX_BYTES + 1)
         except OSError:
             raise ImageError(f"no image at {raw}") from None
-        if size > MAX_BYTES:
-            raise ImageError(f"{raw} is {size} bytes; an image may be at most {MAX_BYTES}")
-        data = path.read_bytes()
+        if len(data) > MAX_BYTES:
+            raise ImageError(f"{raw} is larger than {MAX_BYTES} bytes; an image may be at most {MAX_BYTES}")
         kind = media_type(data)
         if kind is None:
             raise ImageError(f"{raw} is not a PNG, JPEG, GIF or WebP image")
